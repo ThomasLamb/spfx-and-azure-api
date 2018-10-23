@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.AzureAD.UI;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpsPolicy;
@@ -38,6 +39,21 @@ namespace dotNetCoreMvcSample
             services.AddAuthentication(AzureADDefaults.AuthenticationScheme)
                 .AddAzureAD(options => Configuration.Bind("AzureAd", options));
 
+            // Setup CORS
+            // https://docs.microsoft.com/en-us/aspnet/core/security/cors?view=aspnetcore-2.1
+            var corsBuilder = new CorsPolicyBuilder();
+            corsBuilder.WithOrigins("https://vegancode.sharepoint.com");
+            corsBuilder.WithHeaders("authorization");
+            //corsBuilder.AllowAnyHeader();
+            //corsBuilder.AllowAnyMethod();
+            corsBuilder.WithMethods("GET", "PUT", "POST", "DELETE", "OPTIONS");
+            corsBuilder.AllowCredentials();
+            services.AddCors(options =>
+            {
+                options.AddPolicy("SiteCorsPolicy",
+                    corsBuilder.Build());
+            });
+
             services.AddMvc(options =>
             {
                 var policy = new AuthorizationPolicyBuilder()
@@ -66,6 +82,8 @@ namespace dotNetCoreMvcSample
             app.UseCookiePolicy();
 
             app.UseAuthentication();
+
+            app.UseCors("SiteCorsPolicy");
 
             app.UseMvc(routes =>
             {
