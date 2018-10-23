@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.AzureAD.UI;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpsPolicy;
@@ -36,22 +37,35 @@ namespace dotNetCoreMvcSample
                 options.MinimumSameSitePolicy = SameSiteMode.None;
             });
 
-            services.AddAuthentication(AzureADDefaults.AuthenticationScheme)
-                .AddAzureAD(options => Configuration.Bind("AzureAd", options));
+            //services.AddAuthentication(AzureADDefaults.AuthenticationScheme)
+            //    .AddAzureAD(options => Configuration.Bind("AzureAd", options));
 
-            // Setup CORS
-            // https://docs.microsoft.com/en-us/aspnet/core/security/cors?view=aspnetcore-2.1
-            var corsBuilder = new CorsPolicyBuilder();
-            corsBuilder.WithOrigins("https://vegancode.sharepoint.com");
-            corsBuilder.WithHeaders("authorization");
-            //corsBuilder.AllowAnyHeader();
-            //corsBuilder.AllowAnyMethod();
-            corsBuilder.WithMethods("GET", "PUT", "POST", "DELETE", "OPTIONS");
-            corsBuilder.AllowCredentials();
-            services.AddCors(options =>
+            //services.AddAuthentication(options =>
+            //{
+            //    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+            //})
+            //    //.AddJwtBearer(jwtOptions =>
+            //    //{
+            //    //    jwtOptions.Authority = $"https://login.microsoftonline.com/tfp/{Configuration["AzureAd:TenantId"]}/{Configuration["AzureAdB2C:Policy"]}/v2.0/";
+            //    //    jwtOptions.Audience = Configuration["AzureAd:ClientId"];
+            //    //    jwtOptions.Events = new JwtBearerEvents
+            //    //    {
+            //    //        OnAuthenticationFailed = AuthenticationFailed
+            //    //    };
+            //    //});
+            //    .AddAzureADBearer(options => Configuration.Bind("AzureAd", options));
+
+            services.AddAuthentication(options =>
             {
-                options.AddPolicy("SiteCorsPolicy",
-                    corsBuilder.Build());
+                options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(option =>
+            {
+                //option.Authority = $"https://login.microsoftonline.com/{Configuration["AzureAd:TenantId"]}";
+                option.Authority = $"https://sts.windows.net/{Configuration["AzureAd:TenantId"]}";
+                //option.Audience = $"{Configuration["AzureAd:ClientId"]}";
+                option.Audience = $"{Configuration["AzureAd:AppIdUri"]}";
             });
 
             services.AddMvc(options =>
@@ -83,14 +97,21 @@ namespace dotNetCoreMvcSample
 
             app.UseAuthentication();
 
-            app.UseCors("SiteCorsPolicy");
-
             app.UseMvc(routes =>
             {
                 routes.MapRoute(
                     name: "default",
                     template: "{controller=Home}/{action=Index}/{id?}");
             });
+        }
+
+        private Task AuthenticationFailed(AuthenticationFailedContext arg)
+        {
+            // For debugging purposes only!
+            var s = $"AuthenticationFailed: {arg.Exception.Message}";
+            arg.Response.ContentLength = s.Length;
+            arg.Response.Body.Write(Encoding.UTF8.GetBytes(s), 0, s.Length);
+            return Task.FromResult(0);
         }
     }
 }

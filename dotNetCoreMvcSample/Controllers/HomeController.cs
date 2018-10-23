@@ -14,7 +14,7 @@ namespace dotNetCoreMvcSample.Controllers
     {
         public IActionResult Index()
         {
-            return View();
+            return Json("it worked?");
         }
 
         public IActionResult About()
